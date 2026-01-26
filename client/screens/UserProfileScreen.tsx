@@ -1,39 +1,31 @@
 import React from "react";
-import { StyleSheet, View, FlatList, Pressable, Dimensions, ActivityIndicator } from "react-native";
+import { StyleSheet, View, FlatList, Pressable, Dimensions, ActivityIndicator, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useHeaderHeight } from "@react-navigation/elements";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
-import { EarningsCard } from "@/components/EarningsCard";
 import { EmptyState } from "@/components/EmptyState";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/lib/auth";
+import { apiRequest, queryClient } from "@/lib/query-client";
 import { Spacing, BorderRadius, Colors, Fonts } from "@/constants/theme";
-import type { Video } from "@shared/schema";
+import type { User, Video } from "@shared/schema";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const COLUMN_COUNT = 3;
 const ITEM_GAP = 2;
 const ITEM_WIDTH = (SCREEN_WIDTH - Spacing.lg * 2 - ITEM_GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
 
-type ProfileStackParamList = {
-  Profile: undefined;
-  Earnings: undefined;
-  Settings: undefined;
-  VideoDetail: { videoId: string };
-};
-
-type ProfileScreenProps = {
-  navigation: NativeStackNavigationProp<ProfileStackParamList, "Profile">;
-};
+interface UserProfileScreenProps {
+  route: { params: { userId: string } };
+  navigation: any;
+}
 
 function formatCount(count: number): string {
   if (count >= 1000000) return (count / 1000000).toFixed(1) + "M";
@@ -41,23 +33,37 @@ function formatCount(count: number): string {
   return count.toString();
 }
 
-export default function ProfileScreen({ navigation }: ProfileScreenProps) {
+export default function UserProfileScreen({ route, navigation }: UserProfileScreenProps) {
+  const { userId } = route.params;
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
-  const tabBarHeight = useBottomTabBarHeight();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
 
-  const { data: videos, isLoading } = useQuery<Video[]>({
-    queryKey: ["/api/users/me/videos"],
+  const { data: profileUser, isLoading: loadingUser } = useQuery<User & { isFollowing?: boolean }>({
+    queryKey: ["/api/users", userId],
   });
 
-  const { data: stats } = useQuery<{
-    totalViews: number;
-    adImpressions: number;
-  }>({
-    queryKey: ["/api/users/me/stats"],
+  const { data: videos, isLoading: loadingVideos } = useQuery<Video[]>({
+    queryKey: ["/api/users", userId, "videos"],
   });
+
+  const followMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest(
+        profileUser?.isFollowing ? "DELETE" : "POST",
+        `/api/users/${userId}/follow`
+      );
+      return response.json();
+    },
+    onSuccess: () => {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+    },
+  });
+
+  const isOwnProfile = currentUser?.id === userId;
 
   const renderVideoItem = ({ item, index }: { item: Video; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(300)}>
@@ -87,21 +93,26 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     <View style={styles.headerContent}>
       <Animated.View entering={FadeInUp.duration(400)} style={styles.profileSection}>
         <Avatar
-          uri={user?.avatarUrl}
+          uri={profileUser?.avatarUrl}
           size={90}
-          showVerified={user?.isVerified}
+          showVerified={profileUser?.isVerified}
         />
         <ThemedText type="h3" style={styles.displayName}>
-          {user?.displayName || user?.username}
+          {profileUser?.displayName || profileUser?.username}
         </ThemedText>
         <ThemedText type="body" style={styles.username}>
-          @{user?.username}
+          @{profileUser?.username}
         </ThemedText>
+        {profileUser?.bio ? (
+          <ThemedText type="small" style={styles.bio}>
+            {profileUser.bio}
+          </ThemedText>
+        ) : null}
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <ThemedText type="h4" style={styles.statValue}>
-              {formatCount(user?.followerCount || 0)}
+              {formatCount(profileUser?.followerCount || 0)}
             </ThemedText>
             <ThemedText type="small" style={styles.statLabel}>
               Followers
@@ -110,7 +121,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <ThemedText type="h4" style={styles.statValue}>
-              {formatCount(user?.followingCount || 0)}
+              {formatCount(profileUser?.followingCount || 0)}
             </ThemedText>
             <ThemedText type="small" style={styles.statLabel}>
               Following
@@ -126,28 +137,30 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
             </ThemedText>
           </View>
         </View>
+
+        {!isOwnProfile ? (
+          <View style={styles.actionButtons}>
+            <Button
+              onPress={() => followMutation.mutate()}
+              disabled={followMutation.isPending}
+              style={[
+                styles.followButton,
+                profileUser?.isFollowing && { backgroundColor: theme.surface },
+              ]}
+            >
+              {profileUser?.isFollowing ? "Following" : "Follow"}
+            </Button>
+            <Pressable
+              style={[styles.messageButton, { backgroundColor: theme.surface }]}
+            >
+              <Feather name="message-circle" size={20} color={theme.text} />
+            </Pressable>
+          </View>
+        ) : null}
       </Animated.View>
 
-      <EarningsCard
-        totalEarnings={user?.totalEarnings?.toString() || "0"}
-        availableBalance={user?.availableBalance?.toString() || "0"}
-        totalViews={stats?.totalViews || 0}
-        adImpressions={stats?.adImpressions || 0}
-        delay={100}
-        style={styles.earningsCard}
-      />
-
-      <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.actionButtons}>
-        <Button
-          onPress={() => navigation.navigate("Earnings")}
-          style={styles.withdrawButton}
-        >
-          Withdraw Earnings
-        </Button>
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.videosHeader}>
-        <ThemedText type="h4">My Videos</ThemedText>
+      <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.videosHeader}>
+        <ThemedText type="h4">Videos</ThemedText>
       </Animated.View>
     </View>
   );
@@ -157,10 +170,18 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       <EmptyState
         image={require("../../assets/images/empty-videos.png")}
         title="No Videos Yet"
-        description="Upload your first video and start earning!"
+        description={isOwnProfile ? "Upload your first video!" : "This user hasn't posted any videos yet."}
       />
     </View>
   );
+
+  if (loadingUser) {
+    return (
+      <View style={[styles.loading, { backgroundColor: theme.backgroundRoot }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -170,21 +191,16 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         keyExtractor={(item) => item.id}
         numColumns={COLUMN_COUNT}
         ListHeaderComponent={ListHeader}
-        ListEmptyComponent={isLoading ? null : ListEmpty}
+        ListEmptyComponent={loadingVideos ? null : ListEmpty}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
-          paddingBottom: tabBarHeight + Spacing.xl,
+          paddingTop: Spacing.xl,
+          paddingBottom: insets.bottom + Spacing.xl,
           paddingHorizontal: Spacing.lg,
         }}
         showsVerticalScrollIndicator={false}
         columnWrapperStyle={videos && videos.length > 0 ? styles.row : undefined}
         ItemSeparatorComponent={() => <View style={{ height: ITEM_GAP }} />}
       />
-      {isLoading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -194,10 +210,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loading: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.3)",
   },
   headerContent: {
     marginBottom: Spacing.xl,
@@ -212,12 +227,19 @@ const styles = StyleSheet.create({
   },
   username: {
     opacity: 0.7,
+    marginBottom: Spacing.sm,
+  },
+  bio: {
+    opacity: 0.8,
+    textAlign: "center",
     marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: Spacing.xl,
   },
   statItem: {
     alignItems: "center",
@@ -235,14 +257,19 @@ const styles = StyleSheet.create({
     height: 30,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
-  earningsCard: {
-    marginBottom: Spacing.xl,
-  },
   actionButtons: {
-    marginBottom: Spacing.xl,
+    flexDirection: "row",
+    gap: Spacing.md,
   },
-  withdrawButton: {
-    backgroundColor: Colors.dark.success,
+  followButton: {
+    paddingHorizontal: Spacing["4xl"],
+  },
+  messageButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
   },
   videosHeader: {
     marginBottom: Spacing.md,

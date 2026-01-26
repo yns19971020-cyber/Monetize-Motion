@@ -1,30 +1,57 @@
 import { Platform } from "react-native";
 
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
+// App-specific brand colors
+const primaryCyan = "#00D9FF";
+const primaryCyanDark = "#0099CC";
+const accentRed = "#FF3B5C";
+const successGreen = "#00D084";
+const warningYellow = "#FFB800";
+const errorRed = "#FF453A";
 
 export const Colors = {
   light: {
     text: "#11181C",
+    textSecondary: "#687076",
     buttonText: "#FFFFFF",
     tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-    link: "#007AFF",
-    backgroundRoot: "#FFFFFF", // Elevation 0
-    backgroundDefault: "#F2F2F2", // Elevation 1
-    backgroundSecondary: "#E6E6E6", // Elevation 2
-    backgroundTertiary: "#D9D9D9", // Elevation 3
+    tabIconSelected: primaryCyan,
+    link: primaryCyan,
+    primary: primaryCyan,
+    primaryDark: primaryCyanDark,
+    accent: accentRed,
+    success: successGreen,
+    warning: warningYellow,
+    error: errorRed,
+    backgroundRoot: "#FFFFFF",
+    backgroundDefault: "#F2F2F2",
+    backgroundSecondary: "#E6E6E6",
+    backgroundTertiary: "#D9D9D9",
+    surface: "#F8F8F8",
+    surfaceElevated: "#FFFFFF",
+    border: "#E0E0E0",
+    overlay: "rgba(0, 0, 0, 0.5)",
   },
   dark: {
-    text: "#ECEDEE",
-    buttonText: "#FFFFFF",
+    text: "#FFFFFF",
+    textSecondary: "#A0A0A0",
+    buttonText: "#000000",
     tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    link: "#0A84FF",
-    backgroundRoot: "#1F2123", // Elevation 0
-    backgroundDefault: "#2A2C2E", // Elevation 1
-    backgroundSecondary: "#353739", // Elevation 2
-    backgroundTertiary: "#404244", // Elevation 3
+    tabIconSelected: primaryCyan,
+    link: primaryCyan,
+    primary: primaryCyan,
+    primaryDark: primaryCyanDark,
+    accent: accentRed,
+    success: successGreen,
+    warning: warningYellow,
+    error: errorRed,
+    backgroundRoot: "#0A0A0A",
+    backgroundDefault: "#1C1C1E",
+    backgroundSecondary: "#2C2C2E",
+    backgroundTertiary: "#3C3C3E",
+    surface: "#1C1C1E",
+    surfaceElevated: "#2C2C2E",
+    border: "#3C3C3E",
+    overlay: "rgba(0, 0, 0, 0.7)",
   },
 };
 
@@ -38,6 +65,7 @@ export const Spacing = {
   "3xl": 32,
   "4xl": 40,
   "5xl": 48,
+  "6xl": 64,
   inputHeight: 48,
   buttonHeight: 52,
 };
@@ -84,22 +112,28 @@ export const Typography = {
     lineHeight: 20,
     fontWeight: "400" as const,
   },
+  caption: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "400" as const,
+  },
   link: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "400" as const,
   },
+  monospace: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: "600" as const,
+  },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {
@@ -111,8 +145,38 @@ export const Fonts = Platform.select({
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded:
-      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+export const Shadows = {
+  small: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  medium: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  large: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  glow: {
+    shadowColor: primaryCyan,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 0,
+  },
+};
