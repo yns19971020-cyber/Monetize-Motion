@@ -1,13 +1,16 @@
-import { db } from "./db"; // Oyage database connection file eka
+import { db } from "./db"; // db.ts ෆයිල් එක මෙතනට import කරගෙන තියෙනවා
 import { users, type User, type InsertUser } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 
+// CRUD methods ටික හදුන්වා දීම
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 }
 
+// MemStorage වෙනුවට අලුතින් හදන DatabaseStorage එක
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -20,11 +23,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    // Database ekata aluth user kenek save karana eka
-    const [user] = await db.insert(users).values(insertUser).returning();
+    const id = randomUUID(); 
+    // අලුත් user කෙනෙක්ව කෙලින්ම database එකටම save කරනවා
+    const [user] = await db
+      .insert(users)
+      .values({ ...insertUser, id })
+      .returning();
     return user;
   }
 }
 
-// MemStorage wenuwata DatabaseStorage eka export karanna
+// අලුත් DatabaseStorage එක මුළු ඇප් එකටම පාවිච්චි කරන්න export කරනවා
 export const storage = new DatabaseStorage();
