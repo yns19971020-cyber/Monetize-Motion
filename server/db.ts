@@ -4,6 +4,7 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
+// Replit Secrets වල DATABASE_URL එක නැත්නම් error එකක් දෙනවා
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
